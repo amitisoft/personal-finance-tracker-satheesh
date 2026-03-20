@@ -1,0 +1,17 @@
+.dotnet-cli/
+
+# .NET build output
+**/bin/
+**/obj/
+
+# user-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# logs
+*.log
+
+# local env overrides
+.env

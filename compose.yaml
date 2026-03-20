@@ -1,0 +1,45 @@
+name: personal-finance-tracker
+
+services:
+  pft-postgres:
+    image: docker.io/postgres:16-alpine
+    container_name: pft-postgres
+    env_file:
+      - ./db/.env.postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pft-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  pft-backend:
+    build:
+      context: ./personal-finance-tracker-backend
+      dockerfile: Containerfile
+    container_name: pft-backend
+    env_file:
+      - ./personal-finance-tracker-backend/.env.production
+    depends_on:
+      pft-postgres:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+
+  pft-frontend:
+    build:
+      context: ./personal-finance-tracker-frontend
+      dockerfile: Containerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: pft-frontend
+    depends_on:
+      - pft-backend
+    ports:
+      - "8088:80"
+
+volumes:
+  pft-postgres-data:

@@ -47,3 +47,7 @@ D:\personal-finance-tracker\scripts\podman-up.ps1
 ```
 
 That starts PostgreSQL, the backend, and the frontend on one Podman network and lets the backend run migrations at startup.
+
+## Azure deployment
+
+Azure deployment steps for this backend are documented in [DEPLOY_AZURE.md](d:\Amiti 2\personal-finance-tracker-satheesh\personal-finance-tracker-backend\DEPLOY_AZURE.md).

@@ -9,9 +9,20 @@ internal static class BalanceCalculator
 {
     public static async Task RecalculateAsync(AppDbContext db, Guid userId, CancellationToken cancellationToken = default)
     {
-        var accounts = await db.AccountsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        var accountIds = await db.AccountsSet.Where(x => x.UserId == userId).Select(x => x.Id).ToListAsync(cancellationToken);
+        await RecalculateAccountsAsync(db, accountIds, cancellationToken);
+    }
+
+    public static async Task RecalculateAccountsAsync(AppDbContext db, IReadOnlyCollection<Guid> accountIds, CancellationToken cancellationToken = default)
+    {
+        if (accountIds.Count == 0)
+        {
+            return;
+        }
+
+        var accounts = await db.AccountsSet.Where(x => accountIds.Contains(x.Id)).ToListAsync(cancellationToken);
         var transactions = await db.TransactionsSet
-            .Where(x => x.UserId == userId)
+            .Where(x => accountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accountIds.Contains(x.DestinationAccountId.Value)))
             .OrderBy(x => x.TransactionDate)
             .ThenBy(x => x.CreatedAt)
             .ToListAsync(cancellationToken);

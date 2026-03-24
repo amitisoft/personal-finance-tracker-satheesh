@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, PiggyBank, Target, ChartColumn, Repeat, Wallet, Settings } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, PiggyBank, Target, ChartColumn, Repeat, Wallet, Settings, BrainCircuit, Sparkles } from "lucide-react";
 import { routes } from "@/utils/routes";
 import { cn } from "@/utils/cn";
 import { useUiStore } from "@/store/ui-store";
@@ -10,6 +10,8 @@ const items = [
   { to: routes.budgets, label: "Budgets", icon: PiggyBank },
   { to: routes.goals, label: "Goals", icon: Target },
   { to: routes.reports, label: "Reports", icon: ChartColumn },
+  { to: routes.insights, label: "Insights", icon: BrainCircuit },
+  { to: routes.rules, label: "Rules", icon: Sparkles },
   { to: routes.recurring, label: "Recurring", icon: Repeat },
   { to: routes.accounts, label: "Accounts", icon: Wallet },
   { to: routes.settings, label: "Settings", icon: Settings },

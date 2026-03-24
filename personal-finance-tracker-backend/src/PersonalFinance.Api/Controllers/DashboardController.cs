@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalFinance.Api.Contracts;
 using PersonalFinance.Api.Helpers;
+using PersonalFinance.Api.Services;
 using PersonalFinance.Application.Abstractions;
 using PersonalFinance.Domain.Enums;
 using PersonalFinance.Infrastructure.Persistence;
@@ -16,11 +17,13 @@ public sealed class DashboardController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly AccountAccessService _accountAccess;
 
-    public DashboardController(AppDbContext db, ICurrentUserService currentUser)
+    public DashboardController(AppDbContext db, ICurrentUserService currentUser, AccountAccessService accountAccess)
     {
         _db = db;
         _currentUser = currentUser;
+        _accountAccess = accountAccess;
     }
 
     [HttpGet("summary")]
@@ -30,13 +33,14 @@ public sealed class DashboardController : ControllerBase
         var now = DateOnly.FromDateTime(DateTime.UtcNow);
         var selectedMonth = month ?? now.Month;
         var selectedYear = year ?? now.Year;
+        var accessibleAccountIds = await _accountAccess.GetAccessibleAccountIdsAsync(userId, cancellationToken);
 
-        var accounts = await _db.AccountsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        var accounts = await _db.AccountsSet.Where(x => accessibleAccountIds.Contains(x.Id)).ToListAsync(cancellationToken);
         var categories = await _db.CategoriesSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
-        var transactions = await _db.TransactionsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        var transactions = await _db.TransactionsSet.Where(x => accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value))).ToListAsync(cancellationToken);
         var budgets = await _db.BudgetsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         var goals = await _db.GoalsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
-        var recurring = await _db.RecurringTransactionsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
+        var recurring = await _db.RecurringTransactionsSet.Where(x => accessibleAccountIds.Contains(x.AccountId)).ToListAsync(cancellationToken);
 
         var currentTransactions = transactions.Where(x => x.TransactionDate.Month == selectedMonth && x.TransactionDate.Year == selectedYear).ToList();
         var income = currentTransactions.Where(x => x.Type == TransactionType.Income).Sum(x => x.Amount);

@@ -18,4 +18,7 @@ public sealed class User : AuditableEntity
     public ICollection<PasswordResetToken> PasswordResetTokens { get; set; } = new List<PasswordResetToken>();
     public ICollection<AuditLog> AuditLogs { get; set; } = new List<AuditLog>();
     public ICollection<UserNotificationState> NotificationStates { get; set; } = new List<UserNotificationState>();
+    public ICollection<Rule> Rules { get; set; } = new List<Rule>();
+    public ICollection<AccountMember> AccountMemberships { get; set; } = new List<AccountMember>();
+    public ICollection<AccountInvitation> SentAccountInvitations { get; set; } = new List<AccountInvitation>();
 }

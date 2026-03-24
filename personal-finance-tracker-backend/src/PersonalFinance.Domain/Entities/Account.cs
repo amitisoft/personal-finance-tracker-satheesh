@@ -14,4 +14,6 @@ public sealed class Account : AuditableEntity
     public string? InstitutionName { get; set; }
 
     public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public ICollection<AccountMember> Members { get; set; } = new List<AccountMember>();
+    public ICollection<AccountInvitation> Invitations { get; set; } = new List<AccountInvitation>();
 }

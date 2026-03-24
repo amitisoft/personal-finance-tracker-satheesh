@@ -22,4 +22,6 @@ public sealed class Transaction : AuditableEntity
     public string? Merchant { get; set; }
     public string? Note { get; set; }
     public string? PaymentMethod { get; set; }
+    public bool ReviewRequired { get; set; }
+    public string[] Tags { get; set; } = [];
 }

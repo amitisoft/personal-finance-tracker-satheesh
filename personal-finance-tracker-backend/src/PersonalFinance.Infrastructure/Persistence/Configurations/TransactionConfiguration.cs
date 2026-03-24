@@ -22,9 +22,12 @@ internal sealed class TransactionConfiguration : IEntityTypeConfiguration<Transa
         builder.Property(x => x.Merchant).HasColumnName("merchant").HasMaxLength(200);
         builder.Property(x => x.Note).HasColumnName("note");
         builder.Property(x => x.PaymentMethod).HasColumnName("payment_method").HasMaxLength(50);
+        builder.Property(x => x.ReviewRequired).HasColumnName("review_required");
+        builder.Property(x => x.Tags).HasColumnName("tags").HasColumnType("text[]");
         builder.Property(x => x.CreatedAt).HasColumnName("created_at");
         builder.Property(x => x.UpdatedAt).HasColumnName("updated_at");
         builder.HasIndex(x => new { x.UserId, x.TransactionDate });
+        builder.HasIndex(x => new { x.AccountId, x.TransactionDate });
         builder.HasIndex(x => new { x.UserId, x.AccountId });
         builder.HasIndex(x => new { x.UserId, x.CategoryId });
         builder.HasIndex(x => x.TransferGroupId);

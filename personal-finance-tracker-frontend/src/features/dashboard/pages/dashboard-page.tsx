@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Cell, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from "recharts";
-import { getDashboardSummary } from "@/features/finance/api/finance-api";
+import { getDashboardSummary, getForecastDaily, getForecastMonth, getHealthScore } from "@/features/finance/api/finance-api";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { formatCurrency, formatDate } from "@/utils/format";
@@ -19,6 +19,9 @@ const surfaceCardClass =
 
 export function DashboardPage() {
   const { data, isLoading } = useQuery({ queryKey: ["dashboard-summary"], queryFn: getDashboardSummary });
+  const { data: forecastMonth } = useQuery({ queryKey: ["forecast-month"], queryFn: getForecastMonth });
+  const { data: forecastDaily } = useQuery({ queryKey: ["forecast-daily"], queryFn: getForecastDaily });
+  const { data: healthScore } = useQuery({ queryKey: ["health-score"], queryFn: getHealthScore });
   const financeState = useFinanceData();
 
   if (isLoading) {
@@ -41,6 +44,8 @@ export function DashboardPage() {
             { label: "Current month expense", value: formatCurrency(data.currentMonthExpense) },
             { label: "Net balance", value: formatCurrency(data.netBalance) },
             { label: "Goal savings", value: formatCurrency(data.totalGoalSaved) },
+            { label: "Health score", value: healthScore ? `${healthScore.score}/100` : "--" },
+            { label: "Safe to spend", value: forecastMonth ? formatCurrency(forecastMonth.safeToSpend) : "--" },
           ].map((item, index) => (
             <Card key={item.label} className={`min-w-0 ${metricCardStyles[index % metricCardStyles.length]}`}>
               <p className="text-sm font-medium text-slate-500">{item.label}</p>
@@ -50,6 +55,51 @@ export function DashboardPage() {
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+          <Card className={`min-h-[23rem] min-w-0 ${surfaceCardClass}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Projected balance</h3>
+                <p className="mt-1 text-sm text-slate-500">{forecastMonth?.explanation}</p>
+              </div>
+              {forecastMonth ? (
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                  forecastMonth.riskLevel === "high" ? "bg-rose-100 text-rose-700" : forecastMonth.riskLevel === "medium" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"
+                }`}>
+                  {forecastMonth.riskLevel} risk
+                </span>
+              ) : null}
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <div className="rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Current</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">{forecastMonth ? formatCurrency(forecastMonth.currentBalance) : "--"}</p>
+              </div>
+              <div className="rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">End of month</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">{forecastMonth ? formatCurrency(forecastMonth.forecastedEndOfMonthBalance) : "--"}</p>
+              </div>
+              <div className="rounded-2xl border border-white/70 bg-white/75 px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.14em] text-slate-500">Safe to spend</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">{forecastMonth ? formatCurrency(forecastMonth.safeToSpend) : "--"}</p>
+              </div>
+            </div>
+            {forecastMonth?.riskMessages.length ? (
+              <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                {forecastMonth.riskMessages.join(" ")}
+              </div>
+            ) : null}
+            <div className="mt-4 h-[14rem] min-w-0 rounded-[1.5rem] bg-[radial-gradient(circle_at_top,rgba(230,238,255,0.7),rgba(255,255,255,0.55))] px-2 py-2">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={forecastDaily?.points}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
+                  <XAxis dataKey="date" stroke="#5b678a" />
+                  <YAxis stroke="#5b678a" />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Line type="monotone" dataKey="projectedBalance" stroke="#335cff" strokeWidth={3} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
           <Card className={`min-h-[23rem] min-w-0 ${surfaceCardClass}`}>
             <h3 className="mb-4 text-lg font-semibold text-slate-900">Spending by category</h3>
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_200px]">
@@ -98,7 +148,7 @@ export function DashboardPage() {
           </Card>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 2xl:grid-cols-4">
           <Card className={`min-w-0 ${surfaceCardClass}`}>
             <h3 className="text-lg font-semibold text-slate-900">Budget progress</h3>
             <div className="mt-4 space-y-4">
@@ -133,6 +183,20 @@ export function DashboardPage() {
                     {transaction.type === "income" ? "+" : "-"}
                     {formatCurrency(transaction.amount)}
                   </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+          <Card className={`min-w-0 ${surfaceCardClass}`}>
+            <h3 className="text-lg font-semibold text-slate-900">Health score breakdown</h3>
+            <div className="mt-4 space-y-3">
+              {healthScore?.factors.map((factor) => (
+                <div key={factor.name} className="rounded-2xl border border-white/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.92),rgba(243,247,255,0.88))] px-4 py-3 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-slate-800">{factor.name}</p>
+                    <span className="text-sm text-slate-500">{factor.score}/100</span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{factor.explanation}</p>
                 </div>
               ))}
             </div>

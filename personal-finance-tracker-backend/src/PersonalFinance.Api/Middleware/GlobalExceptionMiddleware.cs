@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using PersonalFinance.Api.Exceptions;
 
 namespace PersonalFinance.Api.Middleware;
 
@@ -22,14 +23,28 @@ public sealed class GlobalExceptionMiddleware
         }
         catch (Exception exception)
         {
-            _logger.LogError(exception, "Unhandled request failure");
-            context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+            var (statusCode, title, type) = exception switch
+            {
+                ForbiddenException => ((int)HttpStatusCode.Forbidden, "Forbidden", "https://httpstatuses.com/403"),
+                _ => ((int)HttpStatusCode.InternalServerError, "Server error", "https://httpstatuses.com/500"),
+            };
+
+            if (statusCode >= 500)
+            {
+                _logger.LogError(exception, "Unhandled request failure");
+            }
+            else
+            {
+                _logger.LogWarning(exception, "Handled request failure");
+            }
+
+            context.Response.StatusCode = statusCode;
             context.Response.ContentType = "application/problem+json";
             var payload = new
             {
-                type = "https://httpstatuses.com/500",
-                title = "Server error",
-                status = 500,
+                type,
+                title,
+                status = statusCode,
                 detail = exception.Message,
                 traceId = context.TraceIdentifier,
             };

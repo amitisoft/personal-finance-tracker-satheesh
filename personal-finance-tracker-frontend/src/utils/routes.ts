@@ -8,6 +8,8 @@ export const routes = {
   budgets: "/budgets",
   goals: "/goals",
   reports: "/reports",
+  insights: "/insights",
+  rules: "/rules",
   recurring: "/recurring",
   accounts: "/accounts",
   settings: "/settings",

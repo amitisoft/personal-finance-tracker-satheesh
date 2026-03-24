@@ -26,6 +26,7 @@ export interface Account {
   name: string;
   type: AccountType;
   balance: number;
+  accessRole?: "owner" | "editor" | "viewer";
 }
 
 export interface Category {
@@ -49,6 +50,8 @@ export interface Transaction {
   merchant?: string;
   paymentMethod?: string;
   recurringTransactionId?: string;
+  reviewRequired?: boolean;
+  tags?: string[];
 }
 
 export interface Budget {
@@ -99,6 +102,128 @@ export interface DashboardSummary {
   recentTransactions: Transaction[];
   upcomingRecurring: RecurringTransaction[];
   goals: Goal[];
+}
+
+export interface ForecastSummary {
+  currentBalance: number;
+  forecastedEndOfMonthBalance: number;
+  safeToSpend: number;
+  expectedIncomeRemaining: number;
+  expectedExpenseRemaining: number;
+  riskLevel: "low" | "medium" | "high";
+  riskMessages: string[];
+  calculationWindowMonths: number;
+  lowConfidence: boolean;
+  explanation: string;
+}
+
+export interface ForecastDailyPoint {
+  date: string;
+  projectedBalance: number;
+  markers: string[];
+}
+
+export interface ForecastDaily {
+  points: ForecastDailyPoint[];
+}
+
+export interface HealthScoreFactor {
+  name: string;
+  value: number;
+  score: number;
+  weight: number;
+  explanation: string;
+}
+
+export interface HealthScore {
+  score: number;
+  grade: string;
+  factors: HealthScoreFactor[];
+  suggestions: string[];
+  generatedAt: string;
+  changeSummary: string;
+}
+
+export interface InsightHighlight {
+  title: string;
+  message: string;
+  tone: string;
+  percentChange?: number | null;
+}
+
+export interface InsightsBundle {
+  healthScore: HealthScore;
+  highlights: InsightHighlight[];
+  savingsRateTrend: Array<{ period: string; value: number }>;
+  incomeVsExpenseTrend: Array<{ period: string; income: number; expense: number }>;
+}
+
+export interface RuleCondition {
+  field: string;
+  operator: string;
+  value?: string;
+  values?: string[];
+}
+
+export interface RuleAction {
+  type: string;
+  value?: string;
+}
+
+export interface Rule {
+  id: string;
+  name: string;
+  condition: RuleCondition;
+  action: RuleAction;
+  priority: number;
+  isActive: boolean;
+  summary: string;
+}
+
+export interface AccountMember {
+  userId?: string | null;
+  displayName: string;
+  email: string;
+  role: string;
+  status: string;
+  isOwner: boolean;
+  addedAt?: string | null;
+}
+
+export interface ActivityLog {
+  id: string;
+  accountId?: string | null;
+  actionType: string;
+  entityType: string;
+  entityId?: string | null;
+  actorName: string;
+  createdAt: string;
+  metadataJson?: string | null;
+}
+
+export interface AccountMembersResponse {
+  members: AccountMember[];
+  activity: ActivityLog[];
+}
+
+export interface AccountInvitation {
+  id: string;
+  accountId: string;
+  accountName: string;
+  email: string;
+  role: string;
+  status: string;
+  invitedByName: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
+export interface AdvancedReportBundle {
+  categoryTrends: Array<{ period: string; category: string; value: number }>;
+  savingsRateTrend: Array<{ period: string; value: number }>;
+  incomeVsExpenseTrend: Array<{ period: string; income: number; expense: number }>;
+  netWorthTrend: Array<{ period: string; value: number }>;
+  highlights: InsightHighlight[];
 }
 
 export interface ReportBundle {

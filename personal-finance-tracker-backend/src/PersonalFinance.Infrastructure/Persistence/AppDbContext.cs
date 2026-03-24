@@ -22,6 +22,9 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public DbSet<PasswordResetToken> PasswordResetTokensSet => Set<PasswordResetToken>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<UserNotificationState> UserNotificationStatesSet => Set<UserNotificationState>();
+    public DbSet<Rule> RulesSet => Set<Rule>();
+    public DbSet<AccountMember> AccountMembersSet => Set<AccountMember>();
+    public DbSet<AccountInvitation> AccountInvitationsSet => Set<AccountInvitation>();
 
     public IQueryable<User> Users => UsersSet.AsQueryable();
     public IQueryable<Account> Accounts => AccountsSet.AsQueryable();
@@ -33,6 +36,9 @@ public sealed class AppDbContext : DbContext, IAppDbContext
     public IQueryable<RefreshToken> RefreshTokens => RefreshTokensSet.AsQueryable();
     public IQueryable<PasswordResetToken> PasswordResetTokens => PasswordResetTokensSet.AsQueryable();
     public IQueryable<UserNotificationState> UserNotificationStates => UserNotificationStatesSet.AsQueryable();
+    public IQueryable<Rule> Rules => RulesSet.AsQueryable();
+    public IQueryable<AccountMember> AccountMembers => AccountMembersSet.AsQueryable();
+    public IQueryable<AccountInvitation> AccountInvitations => AccountInvitationsSet.AsQueryable();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -10,6 +10,8 @@ import { TransactionsPage } from "@/features/transactions/pages/transactions-pag
 import { BudgetsPage } from "@/features/budgets/pages/budgets-page";
 import { GoalsPage } from "@/features/goals/pages/goals-page";
 import { ReportsPage } from "@/features/reports/pages/reports-page";
+import { InsightsPage } from "@/features/insights/pages/insights-page";
+import { RulesPage } from "@/features/rules/pages/rules-page";
 import { RecurringPage } from "@/features/recurring/pages/recurring-page";
 import { AccountsPage } from "@/features/accounts/pages/accounts-page";
 import { SettingsPage } from "@/features/settings/pages/settings-page";
@@ -32,6 +34,8 @@ export const router = createBrowserRouter([
           { path: routes.budgets, element: <BudgetsPage /> },
           { path: routes.goals, element: <GoalsPage /> },
           { path: routes.reports, element: <ReportsPage /> },
+          { path: routes.insights, element: <InsightsPage /> },
+          { path: routes.rules, element: <RulesPage /> },
           { path: routes.recurring, element: <RecurringPage /> },
           { path: routes.accounts, element: <AccountsPage /> },
           { path: routes.settings, element: <SettingsPage /> },

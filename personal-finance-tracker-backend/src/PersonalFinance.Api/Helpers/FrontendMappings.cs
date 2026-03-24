@@ -53,10 +53,10 @@ internal static class FrontendMappings
         _ => RecurringFrequency.Monthly,
     };
 
-    public static AccountVm ToVm(this Account account) => new(account.Id, account.Name, account.Type.ToFrontend(), account.CurrentBalance);
+    public static AccountVm ToVm(this Account account, string accessRole = "owner") => new(account.Id, account.Name, account.Type.ToFrontend(), account.CurrentBalance, accessRole);
     public static CategoryVm ToVm(this Category category) => new(category.Id, category.Name, category.Type.ToFrontend(), category.Color ?? "#2563eb", category.Icon ?? "Tag", category.IsArchived);
     public static TransactionVm ToVm(this Transaction transaction)
-        => new(transaction.Id, transaction.AccountId, transaction.DestinationAccountId, transaction.Type.ToFrontend(), transaction.Amount, transaction.TransactionDate, transaction.CategoryId, transaction.Note, transaction.Merchant, transaction.PaymentMethod, transaction.RecurringTransactionId);
+        => new(transaction.Id, transaction.AccountId, transaction.DestinationAccountId, transaction.Type.ToFrontend(), transaction.Amount, transaction.TransactionDate, transaction.CategoryId, transaction.Note, transaction.Merchant, transaction.PaymentMethod, transaction.RecurringTransactionId, transaction.ReviewRequired, transaction.Tags);
     public static BudgetVm ToVm(this Budget budget, decimal spent)
         => new(budget.Id, budget.CategoryId, budget.Month, budget.Year, budget.Amount, spent, budget.AlertThresholdPercent);
     public static GoalVm ToVm(this Goal goal)

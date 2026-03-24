@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using PersonalFinance.Api.Contracts;
 using PersonalFinance.Api.Helpers;
+using PersonalFinance.Api.Services;
 using PersonalFinance.Application.Abstractions;
 using PersonalFinance.Domain.Entities;
 using PersonalFinance.Domain.Enums;
@@ -17,11 +18,17 @@ public sealed class TransactionsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
+    private readonly AccountAccessService _accountAccess;
+    private readonly RuleEngineService _ruleEngine;
+    private readonly ActivityLogService _activityLog;
 
-    public TransactionsController(AppDbContext db, ICurrentUserService currentUser)
+    public TransactionsController(AppDbContext db, ICurrentUserService currentUser, AccountAccessService accountAccess, RuleEngineService ruleEngine, ActivityLogService activityLog)
     {
         _db = db;
         _currentUser = currentUser;
+        _accountAccess = accountAccess;
+        _ruleEngine = ruleEngine;
+        _activityLog = activityLog;
     }
 
     [HttpGet]
@@ -35,7 +42,8 @@ public sealed class TransactionsController : ControllerBase
         CancellationToken cancellationToken)
     {
         var userId = _currentUser.GetRequiredUserId();
-        var query = _db.TransactionsSet.Where(x => x.UserId == userId);
+        var accessibleAccountIds = await _accountAccess.GetAccessibleAccountIdsAsync(userId, cancellationToken);
+        var query = _db.TransactionsSet.Where(x => accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value)));
 
         if (dateFrom.HasValue) query = query.Where(x => x.TransactionDate >= dateFrom.Value);
         if (dateTo.HasValue) query = query.Where(x => x.TransactionDate <= dateTo.Value);
@@ -59,7 +67,8 @@ public sealed class TransactionsController : ControllerBase
     public async Task<ActionResult<TransactionVm>> GetById(Guid id, CancellationToken cancellationToken)
     {
         var userId = _currentUser.GetRequiredUserId();
-        var transaction = await _db.TransactionsSet.SingleAsync(x => x.Id == id && x.UserId == userId, cancellationToken);
+        var accessibleAccountIds = await _accountAccess.GetAccessibleAccountIdsAsync(userId, cancellationToken);
+        var transaction = await _db.TransactionsSet.SingleAsync(x => x.Id == id && (accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value))), cancellationToken);
         return Ok(transaction.ToVm());
     }
 
@@ -84,10 +93,14 @@ public sealed class TransactionsController : ControllerBase
     {
         var userId = _currentUser.GetRequiredUserId();
         using var tx = await _db.Database.BeginTransactionAsync(cancellationToken);
-        var transaction = await _db.TransactionsSet.SingleAsync(x => x.Id == id && x.UserId == userId, cancellationToken);
+        var accessibleAccountIds = await _accountAccess.GetAccessibleAccountIdsAsync(userId, cancellationToken);
+        var transaction = await _db.TransactionsSet.SingleAsync(x => x.Id == id && (accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value))), cancellationToken);
+        await _accountAccess.EnsureCanWriteAccountAsync(userId, transaction.AccountId, cancellationToken);
         _db.TransactionsSet.Remove(transaction);
         await _db.SaveChangesAsync(cancellationToken);
-        await BalanceCalculator.RecalculateAsync(_db, userId, cancellationToken);
+        await BalanceCalculator.RecalculateAccountsAsync(_db, new[] { transaction.AccountId, transaction.DestinationAccountId ?? Guid.Empty }.Where(x => x != Guid.Empty).ToList(), cancellationToken);
+        _activityLog.Add(userId, "transaction_deleted", "transaction", transaction.Id, transaction.AccountId, new { transaction.Amount, transaction.Type });
+        await _db.SaveChangesAsync(cancellationToken);
         await tx.CommitAsync(cancellationToken);
         return NoContent();
     }
@@ -98,9 +111,14 @@ public sealed class TransactionsController : ControllerBase
         if (request.Date > DateOnly.FromDateTime(DateTime.UtcNow)) throw new InvalidOperationException("Transaction date cannot be in the future.");
 
         var type = request.Type.ToTransactionType();
+        await _accountAccess.EnsureCanWriteAccountAsync(userId, request.AccountId, cancellationToken);
         if (type == TransactionType.Transfer && (!request.DestinationAccountId.HasValue || request.DestinationAccountId == request.AccountId))
         {
             throw new InvalidOperationException("Source and destination accounts must be different for transfers.");
+        }
+        if (request.DestinationAccountId.HasValue)
+        {
+            await _accountAccess.EnsureCanWriteAccountAsync(userId, request.DestinationAccountId.Value, cancellationToken);
         }
 
         if (request.CategoryId.HasValue)
@@ -116,7 +134,8 @@ public sealed class TransactionsController : ControllerBase
         Transaction entity;
         if (id.HasValue)
         {
-            entity = await _db.TransactionsSet.SingleAsync(x => x.Id == id.Value && x.UserId == userId, cancellationToken);
+            var accessibleAccountIds = await _accountAccess.GetAccessibleAccountIdsAsync(userId, cancellationToken);
+            entity = await _db.TransactionsSet.SingleAsync(x => x.Id == id.Value && (accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value))), cancellationToken);
             entity.AccountId = request.AccountId;
             entity.DestinationAccountId = request.DestinationAccountId;
             entity.Type = type;
@@ -127,6 +146,8 @@ public sealed class TransactionsController : ControllerBase
             entity.Merchant = request.Merchant;
             entity.PaymentMethod = request.PaymentMethod;
             entity.RecurringTransactionId = request.RecurringTransactionId;
+            entity.ReviewRequired = request.ReviewRequired;
+            entity.Tags = request.Tags?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? [];
             entity.UpdatedAt = DateTimeOffset.UtcNow;
         }
         else
@@ -144,19 +165,24 @@ public sealed class TransactionsController : ControllerBase
                 Merchant = request.Merchant,
                 PaymentMethod = request.PaymentMethod,
                 RecurringTransactionId = request.RecurringTransactionId,
+                ReviewRequired = request.ReviewRequired,
+                Tags = request.Tags?.Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? [],
             };
             _db.TransactionsSet.Add(entity);
         }
 
+        entity = await _ruleEngine.ApplyAsync(userId, entity, cancellationToken);
         await _db.SaveChangesAsync(cancellationToken);
-        await BalanceCalculator.RecalculateAsync(_db, userId, cancellationToken);
+        await BalanceCalculator.RecalculateAccountsAsync(_db, new[] { entity.AccountId, entity.DestinationAccountId ?? Guid.Empty }.Where(x => x != Guid.Empty).ToList(), cancellationToken);
 
-        if (await _db.AccountsSet.AnyAsync(x => x.UserId == userId && x.CurrentBalance < 0, cancellationToken))
+        if (await _db.AccountsSet.AnyAsync(x => x.Id == entity.AccountId && x.CurrentBalance < 0, cancellationToken))
         {
             await tx.RollbackAsync(cancellationToken);
             throw new InvalidOperationException("Insufficient balance for this transaction.");
         }
 
+        _activityLog.Add(userId, id.HasValue ? "transaction_updated" : "transaction_created", "transaction", entity.Id, entity.AccountId, new { entity.Amount, Type = entity.Type.ToString(), entity.ReviewRequired, entity.Tags });
+        await _db.SaveChangesAsync(cancellationToken);
         await tx.CommitAsync(cancellationToken);
         entity = await _db.TransactionsSet.SingleAsync(x => x.Id == entity.Id, cancellationToken);
         return entity.ToVm();

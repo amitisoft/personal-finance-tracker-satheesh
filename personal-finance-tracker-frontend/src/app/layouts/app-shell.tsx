@@ -18,7 +18,7 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       {sidebarOpen ? <button className="fixed inset-0 z-20 bg-slate-950/35 lg:hidden" onClick={closeSidebar} aria-label="Close navigation" /> : null}
-      <div className="mx-auto grid min-h-screen max-w-[1600px] lg:grid-cols-[280px_1fr]">
+      <div className="mx-auto grid min-h-screen w-full max-w-[1880px] lg:grid-cols-[280px_minmax(0,1fr)] 2xl:max-w-[1980px]">
         <aside
           className={cn(
             "fixed inset-y-0 left-0 z-30 w-72 max-w-[85vw] -translate-x-full border-r border-slate-200 bg-white p-5 transition-transform duration-200 lg:static lg:w-auto lg:max-w-none lg:translate-x-0",

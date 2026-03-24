@@ -73,7 +73,19 @@ function getCategoryMeta(transaction: Transaction, categories: Category[]) {
 }
 
 function getAccountLabel(transaction: Transaction, accountName: string, destinationName: string | null) {
-  return destinationName ? `${accountName} -> ${destinationName}` : accountName;
+  if (transaction.type !== "transfer") {
+    return accountName;
+  }
+
+  if (destinationName) {
+    return `${accountName} -> ${destinationName}`;
+  }
+
+  if (transaction.destinationAccountId) {
+    return `${accountName} -> hidden account`;
+  }
+
+  return accountName;
 }
 
 function escapeCsvValue(value: string | number) {
@@ -167,12 +179,8 @@ function TransactionsPage() {
     return [...filteredRows].sort((left, right) => {
       const leftAccount = data.accounts.find((entry) => entry.id === left.accountId)?.name ?? left.accountId;
       const rightAccount = data.accounts.find((entry) => entry.id === right.accountId)?.name ?? right.accountId;
-      const leftDestination = left.destinationAccountId
-        ? data.accounts.find((entry) => entry.id === left.destinationAccountId)?.name ?? left.destinationAccountId
-        : null;
-      const rightDestination = right.destinationAccountId
-        ? data.accounts.find((entry) => entry.id === right.destinationAccountId)?.name ?? right.destinationAccountId
-        : null;
+      const leftDestination = left.destinationAccountId ? data.accounts.find((entry) => entry.id === left.destinationAccountId)?.name ?? null : null;
+      const rightDestination = right.destinationAccountId ? data.accounts.find((entry) => entry.id === right.destinationAccountId)?.name ?? null : null;
       const leftCategory = getCategoryMeta(left, data.categories).label;
       const rightCategory = getCategoryMeta(right, data.categories).label;
       const leftType = getTypeStyles(left.type).label;
@@ -263,9 +271,7 @@ function TransactionsPage() {
     const headers = ["Date", "Merchant", "Category", "Account", "Type", "Amount", "Payment Method", "Note"];
     const lines = rows.map((item) => {
       const account = data.accounts.find((entry) => entry.id === item.accountId)?.name ?? item.accountId;
-      const destination = item.destinationAccountId
-        ? data.accounts.find((entry) => entry.id === item.destinationAccountId)?.name ?? item.destinationAccountId
-        : null;
+      const destination = item.destinationAccountId ? data.accounts.find((entry) => entry.id === item.destinationAccountId)?.name ?? null : null;
 
       return [
         item.date,
@@ -429,9 +435,7 @@ function TransactionsPage() {
                 <tbody>
                   {paginatedRows.map((item, index) => {
                     const account = data.accounts.find((entry) => entry.id === item.accountId)?.name ?? item.accountId;
-                    const destination = item.destinationAccountId
-                      ? data.accounts.find((entry) => entry.id === item.destinationAccountId)?.name ?? item.destinationAccountId
-                      : null;
+                    const destination = item.destinationAccountId ? data.accounts.find((entry) => entry.id === item.destinationAccountId)?.name ?? null : null;
                     const category = getCategoryMeta(item, data.categories);
                     const styles = getTypeStyles(item.type);
                     const Icon = styles.icon;
@@ -497,9 +501,7 @@ function TransactionsPage() {
           <div className="grid gap-4 lg:hidden">
             {paginatedRows.map((item) => {
               const account = data.accounts.find((entry) => entry.id === item.accountId)?.name ?? item.accountId;
-              const destination = item.destinationAccountId
-                ? data.accounts.find((entry) => entry.id === item.destinationAccountId)?.name ?? item.destinationAccountId
-                : null;
+              const destination = item.destinationAccountId ? data.accounts.find((entry) => entry.id === item.destinationAccountId)?.name ?? null : null;
               const category = getCategoryMeta(item, data.categories);
               const styles = getTypeStyles(item.type);
               const Icon = styles.icon;

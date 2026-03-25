@@ -59,7 +59,12 @@ public sealed class TransactionsController : ControllerBase
                 x.Type.ToString().ToLower().Contains(term));
         }
 
-        var items = await query.OrderByDescending(x => x.TransactionDate).ThenByDescending(x => x.CreatedAt).ToListAsync(cancellationToken);
+        var items = await query
+            .Include(x => x.Category)
+            .Include(x => x.User)
+            .OrderByDescending(x => x.TransactionDate)
+            .ThenByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
         return Ok(items.Select(x => x.ToVm()).ToList());
     }
 
@@ -68,7 +73,10 @@ public sealed class TransactionsController : ControllerBase
     {
         var userId = _currentUser.GetRequiredUserId();
         var accessibleAccountIds = await _accountAccess.GetAccessibleAccountIdsAsync(userId, cancellationToken);
-        var transaction = await _db.TransactionsSet.SingleAsync(x => x.Id == id && (accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value))), cancellationToken);
+        var transaction = await _db.TransactionsSet
+            .Include(x => x.Category)
+            .Include(x => x.User)
+            .SingleAsync(x => x.Id == id && (accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value))), cancellationToken);
         return Ok(transaction.ToVm());
     }
 
@@ -184,7 +192,10 @@ public sealed class TransactionsController : ControllerBase
         _activityLog.Add(userId, id.HasValue ? "transaction_updated" : "transaction_created", "transaction", entity.Id, entity.AccountId, new { entity.Amount, Type = entity.Type.ToString(), entity.ReviewRequired, entity.Tags });
         await _db.SaveChangesAsync(cancellationToken);
         await tx.CommitAsync(cancellationToken);
-        entity = await _db.TransactionsSet.SingleAsync(x => x.Id == entity.Id, cancellationToken);
+        entity = await _db.TransactionsSet
+            .Include(x => x.Category)
+            .Include(x => x.User)
+            .SingleAsync(x => x.Id == entity.Id, cancellationToken);
         return entity.ToVm();
     }
 }

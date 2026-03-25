@@ -52,6 +52,11 @@ export interface Transaction {
   recurringTransactionId?: string;
   reviewRequired?: boolean;
   tags?: string[];
+  categoryName?: string;
+  categoryColor?: string;
+  categoryIcon?: string;
+  createdByUserId?: string;
+  createdByName?: string;
 }
 
 export interface Budget {

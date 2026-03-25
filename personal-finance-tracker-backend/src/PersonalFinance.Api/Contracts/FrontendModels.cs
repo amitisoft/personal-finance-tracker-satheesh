@@ -4,7 +4,25 @@ public sealed record UserVm(Guid Id, string DisplayName, string Email);
 public sealed record SessionVm(UserVm User, string AccessToken, string RefreshToken);
 public sealed record AccountVm(Guid? Id, string Name, string Type, decimal Balance, string AccessRole = "owner");
 public sealed record CategoryVm(Guid? Id, string Name, string Type, string Color, string Icon, bool Archived = false);
-public sealed record TransactionVm(Guid? Id, Guid AccountId, Guid? DestinationAccountId, string Type, decimal Amount, DateOnly Date, Guid? CategoryId, string? Note, string? Merchant, string? PaymentMethod, Guid? RecurringTransactionId, bool ReviewRequired = false, IReadOnlyList<string>? Tags = null);
+public sealed record TransactionVm(
+    Guid? Id,
+    Guid AccountId,
+    Guid? DestinationAccountId,
+    string Type,
+    decimal Amount,
+    DateOnly Date,
+    Guid? CategoryId,
+    string? Note,
+    string? Merchant,
+    string? PaymentMethod,
+    Guid? RecurringTransactionId,
+    bool ReviewRequired = false,
+    IReadOnlyList<string>? Tags = null,
+    string? CategoryName = null,
+    string? CategoryColor = null,
+    string? CategoryIcon = null,
+    Guid? CreatedByUserId = null,
+    string? CreatedByName = null);
 public sealed record BudgetVm(Guid? Id, Guid CategoryId, int Month, int Year, decimal Amount, decimal Spent, int AlertThresholdPercent);
 public sealed record GoalVm(Guid? Id, string Name, decimal TargetAmount, decimal CurrentAmount, DateOnly? TargetDate, Guid? LinkedAccountId, string Icon, string Color, string Status);
 public sealed record RecurringVm(Guid? Id, string Title, string Type, decimal Amount, Guid? CategoryId, Guid AccountId, string Frequency, DateOnly StartDate, DateOnly? EndDate, DateOnly NextRunDate, bool AutoCreateTransaction, bool Paused);

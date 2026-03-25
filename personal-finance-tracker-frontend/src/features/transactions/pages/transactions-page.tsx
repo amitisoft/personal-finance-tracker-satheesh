@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useFinanceData } from "@/features/common/hooks/use-finance-data";
 import { useUiStore } from "@/store/ui-store";
+import { useAuthStore } from "@/store/auth-store";
 import { formatCurrency, formatDate } from "@/utils/format";
 import { removeTransaction } from "@/features/finance/api/finance-api";
 import { toastSuccess } from "@/components/feedback/toast";
@@ -53,6 +54,14 @@ function getCategoryMeta(transaction: Transaction, categories: Category[]) {
       label: "Transfer",
       color: "#cbd5e1",
       tone: "text-slate-500",
+    };
+  }
+
+  if (transaction.categoryName) {
+    return {
+      label: transaction.categoryName,
+      color: transaction.categoryColor ?? "#cbd5e1",
+      tone: "text-slate-700",
     };
   }
 
@@ -139,6 +148,7 @@ function SortHeader({
 function TransactionsPage() {
   const pageSizeOptions = [10, 25, 50];
   const { data } = useFinanceData();
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const openTransactionModal = useUiStore((state) => state.openTransactionModal);
   const search = useUiStore((state) => state.search);
   const setSearch = useUiStore((state) => state.setSearch);
@@ -453,6 +463,9 @@ function TransactionsPage() {
                             <div>
                               <p className="font-medium text-slate-900">{item.merchant ?? item.note ?? "Untitled"}</p>
                               <p className="text-xs text-slate-500">{item.paymentMethod || item.note || "No extra details"}</p>
+                              {item.createdByName && item.createdByUserId && item.createdByUserId !== currentUserId ? (
+                                <p className="mt-1 text-xs font-medium text-brand-600">Added by {item.createdByName}</p>
+                              ) : null}
                             </div>
                           </div>
                         </td>
@@ -516,6 +529,9 @@ function TransactionsPage() {
                       </span>
                       <p className="mt-3 text-lg font-semibold text-slate-900">{item.merchant ?? item.note ?? "Untitled"}</p>
                       <p className="mt-1 text-sm text-slate-500">{formatDate(item.date)}</p>
+                      {item.createdByName && item.createdByUserId && item.createdByUserId !== currentUserId ? (
+                        <p className="mt-2 text-xs font-medium text-brand-600">Added by {item.createdByName}</p>
+                      ) : null}
                     </div>
                     <span className={`text-lg font-semibold ${styles.amount}`}>
                       {styles.prefix}

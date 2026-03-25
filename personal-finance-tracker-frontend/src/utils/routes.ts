@@ -12,5 +12,6 @@ export const routes = {
   rules: "/rules",
   recurring: "/recurring",
   accounts: "/accounts",
+  categories: "/categories",
   settings: "/settings",
 } as const;

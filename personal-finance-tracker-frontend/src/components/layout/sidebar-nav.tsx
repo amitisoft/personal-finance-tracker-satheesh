@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { LayoutDashboard, ArrowLeftRight, PiggyBank, Target, ChartColumn, Repeat, Wallet, Settings, BrainCircuit, Sparkles } from "lucide-react";
+import { LayoutDashboard, ArrowLeftRight, PiggyBank, Target, ChartColumn, Repeat, Wallet, Settings, BrainCircuit, Sparkles, Tags } from "lucide-react";
 import { routes } from "@/utils/routes";
 import { cn } from "@/utils/cn";
 import { useUiStore } from "@/store/ui-store";
@@ -14,6 +14,7 @@ const items = [
   { to: routes.rules, label: "Rules", icon: Sparkles },
   { to: routes.recurring, label: "Recurring", icon: Repeat },
   { to: routes.accounts, label: "Accounts", icon: Wallet },
+  { to: routes.categories, label: "Categories", icon: Tags },
   { to: routes.settings, label: "Settings", icon: Settings },
 ];
 

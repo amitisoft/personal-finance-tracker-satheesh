@@ -14,6 +14,7 @@ import { InsightsPage } from "@/features/insights/pages/insights-page";
 import { RulesPage } from "@/features/rules/pages/rules-page";
 import { RecurringPage } from "@/features/recurring/pages/recurring-page";
 import { AccountsPage } from "@/features/accounts/pages/accounts-page";
+import { CategoriesPage } from "@/features/categories/pages/categories-page";
 import { SettingsPage } from "@/features/settings/pages/settings-page";
 import { routes } from "@/utils/routes";
 
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
           { path: routes.rules, element: <RulesPage /> },
           { path: routes.recurring, element: <RecurringPage /> },
           { path: routes.accounts, element: <AccountsPage /> },
+          { path: routes.categories, element: <CategoriesPage /> },
           { path: routes.settings, element: <SettingsPage /> },
         ],
       },

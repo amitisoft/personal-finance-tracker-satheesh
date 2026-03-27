@@ -224,7 +224,7 @@ export interface AccountInvitation {
 }
 
 export interface AdvancedReportBundle {
-  categoryTrends: Array<{ period: string; category: string; value: number }>;
+  categoryTrends: Array<{ period: string; category: string; value: number; color?: string }>;
   savingsRateTrend: Array<{ period: string; value: number }>;
   incomeVsExpenseTrend: Array<{ period: string; income: number; expense: number }>;
   netWorthTrend: Array<{ period: string; value: number }>;

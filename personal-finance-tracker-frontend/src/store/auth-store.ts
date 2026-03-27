@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: "finance-auth-session",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ session: state.session }),
       onRehydrateStorage: () => (state) => {
         state?.setSession(state.session ?? null);

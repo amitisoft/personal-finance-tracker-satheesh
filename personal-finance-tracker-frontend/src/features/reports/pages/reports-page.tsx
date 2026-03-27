@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Bar, BarChart, CartesianGrid, Cell, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Cell, LabelList, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { getAdvancedReports, getReports } from "@/features/finance/api/finance-api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { useFinanceData } from "@/features/common/hooks/use-finance-data";
+import { formatCurrency } from "@/utils/format";
 
 const pageShellClass =
   "relative overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(194,214,255,0.42),transparent_32%),radial-gradient(circle_at_top_right,rgba(255,236,211,0.34),transparent_26%),linear-gradient(180deg,#f9fbff_0%,#eef4ff_54%,#f8fbff_100%)] px-4 py-5 sm:px-6";
@@ -28,6 +29,9 @@ export function ReportsPage() {
   });
 
   const categoryTrendData = useMemo(() => advanced?.categoryTrends.slice(-8) ?? [], [advanced]);
+  const categorySpendChartData = useMemo(() => (data?.categorySpend ?? []).slice().sort((left, right) => right.value - left.value), [data]);
+  const currencyTooltipFormatter = (value: number) => formatCurrency(value);
+  const currencyAxisFormatter = (value: number) => formatCurrency(value).replace("?", "").trim();
 
   const exportCsv = () => {
     if (!data) {
@@ -71,17 +75,18 @@ export function ReportsPage() {
           </div>
         </Card>
         <div className="grid gap-4">
-          <Card className={`h-80 ${softPanelClass}`}>
+          <Card className={`h-[26rem] ${softPanelClass}`}>
             <h3 className="mb-4 text-lg font-semibold text-slate-900">Monthly spending report</h3>
             <div className="h-[90%] rounded-[1.5rem] bg-[radial-gradient(circle_at_top,rgba(230,238,255,0.7),rgba(255,255,255,0.55))] px-2 py-2">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data?.categorySpend}>
+                <BarChart data={categorySpendChartData} layout="vertical" margin={{ top: 8, right: 24, bottom: 8, left: 16 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
-                  <XAxis dataKey="name" stroke="#5b678a" />
-                  <YAxis stroke="#5b678a" />
-                  <Tooltip />
-                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                    {data?.categorySpend.map((entry) => <Cell key={entry.name} fill={entry.color} />)}
+                  <XAxis type="number" stroke="#5b678a" tickFormatter={currencyAxisFormatter} />
+                  <YAxis type="category" dataKey="name" width={150} stroke="#5b678a" tickLine={false} axisLine={false} />
+                  <Tooltip formatter={currencyTooltipFormatter} />
+                  <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={26}>
+                    {categorySpendChartData.map((entry, index) => <Cell key={`${entry.name}-${index}`} fill={entry.color} />)}
+                    <LabelList dataKey="value" position="right" formatter={(value: number) => formatCurrency(value)} className="fill-slate-700 text-xs font-medium" />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -94,8 +99,8 @@ export function ReportsPage() {
                 <LineChart data={data?.incomeVsExpense}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
                   <XAxis dataKey="month" stroke="#5b678a" />
-                  <YAxis stroke="#5b678a" />
-                  <Tooltip />
+                  <YAxis stroke="#5b678a" tickFormatter={currencyAxisFormatter} />
+                  <Tooltip formatter={currencyTooltipFormatter} />
                   <Line dataKey="income" stroke="#10b981" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                   <Line dataKey="expense" stroke="#ef4444" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                 </LineChart>
@@ -123,8 +128,8 @@ export function ReportsPage() {
                 <LineChart data={advanced?.netWorthTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
                   <XAxis dataKey="period" stroke="#5b678a" />
-                  <YAxis stroke="#5b678a" />
-                  <Tooltip />
+                  <YAxis stroke="#5b678a" tickFormatter={currencyAxisFormatter} />
+                  <Tooltip formatter={currencyTooltipFormatter} />
                   <Line dataKey="value" stroke="#0f766e" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -137,9 +142,13 @@ export function ReportsPage() {
                 <BarChart data={categoryTrendData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
                   <XAxis dataKey="category" stroke="#5b678a" />
-                  <YAxis stroke="#5b678a" />
-                  <Tooltip />
-                  <Bar dataKey="value" fill="#335cff" radius={[8, 8, 0, 0]} />
+                  <YAxis stroke="#5b678a" tickFormatter={currencyAxisFormatter} />
+                  <Tooltip formatter={currencyTooltipFormatter} />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    {categoryTrendData.map((entry, index) => (
+                      <Cell key={`${entry.period}-${entry.category}-${index}`} fill={entry.color ?? "#335cff"} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             </div>

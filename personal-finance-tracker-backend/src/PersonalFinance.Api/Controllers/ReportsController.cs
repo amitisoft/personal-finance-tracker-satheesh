@@ -15,6 +15,10 @@ namespace PersonalFinance.Api.Controllers;
 [Route("api/reports")]
 public sealed class ReportsController : ControllerBase
 {
+    private const string SharedMemberSpendColor = "#7c3aed";
+    private const string UncategorizedLabel = "Needs review";
+    private const string UncategorizedColor = "#64748b";
+
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly AccountAccessService _accountAccess;
@@ -33,9 +37,17 @@ public sealed class ReportsController : ControllerBase
     {
         var userId = _currentUser.GetRequiredUserId();
         var accountIds = await _accountAccess.GetAccessibleAccountIdsAsync(userId, cancellationToken);
-        var categories = await _db.CategoriesSet.Where(x => x.UserId == userId).ToDictionaryAsync(x => x.Id, cancellationToken);
-        var data = await _db.TransactionsSet.Where(x => accountIds.Contains(x.AccountId) && x.Type == TransactionType.Expense && x.CategoryId != null).ToListAsync(cancellationToken);
-        return Ok(data.GroupBy(x => x.CategoryId!.Value).Select(g => new { name = categories.GetValueOrDefault(g.Key)?.Name ?? "Uncategorized", value = g.Sum(x => x.Amount), color = categories.GetValueOrDefault(g.Key)?.Color ?? "#2563eb" }).ToList());
+        var data = await _db.TransactionsSet
+            .Include(x => x.Category)
+            .Include(x => x.User)
+            .Where(x => accountIds.Contains(x.AccountId) && x.Type == TransactionType.Expense)
+            .ToListAsync(cancellationToken);
+
+        return Ok(data
+            .GroupBy(x => BuildCategoryBucket(x, userId))
+            .Select(g => new { name = g.Key.Name, value = g.Sum(x => x.Amount), color = g.Key.Color })
+            .OrderByDescending(x => x.value)
+            .ToList());
     }
 
     [HttpGet("income-vs-expense")]
@@ -110,8 +122,9 @@ public sealed class ReportsController : ControllerBase
 
         var from = dateFrom ?? DateOnly.FromDateTime(DateTime.UtcNow).AddMonths(-5);
         var to = dateTo ?? DateOnly.FromDateTime(DateTime.UtcNow);
-        var categories = await _db.CategoriesSet.Where(x => x.UserId == userId).ToDictionaryAsync(x => x.Id, cancellationToken);
         var transactions = await _db.TransactionsSet
+            .Include(x => x.Category)
+            .Include(x => x.User)
             .Where(x => accountIds.Contains(x.AccountId) && x.TransactionDate >= from && x.TransactionDate <= to && (!categoryId.HasValue || x.CategoryId == categoryId))
             .ToListAsync(cancellationToken);
         var accounts = await _db.AccountsSet.Where(x => accountIds.Contains(x.Id)).ToListAsync(cancellationToken);
@@ -129,13 +142,19 @@ public sealed class ReportsController : ControllerBase
             .ToList();
 
         var categoryTrends = transactions
-            .Where(x => x.CategoryId.HasValue)
-            .GroupBy(x => new { x.TransactionDate.Year, x.TransactionDate.Month, CategoryId = x.CategoryId!.Value })
+            .Where(x => x.Type == TransactionType.Expense)
+            .GroupBy(x => new
+            {
+                x.TransactionDate.Year,
+                x.TransactionDate.Month,
+                Bucket = BuildCategoryBucket(x, userId)
+            })
             .Select(g => new
             {
                 period = new DateOnly(g.Key.Year, g.Key.Month, 1).ToString("MMM yyyy"),
-                category = categories.GetValueOrDefault(g.Key.CategoryId)?.Name ?? "Uncategorized",
+                category = g.Key.Bucket.Name,
                 value = g.Sum(x => x.Amount),
+                color = g.Key.Bucket.Color,
             })
             .OrderBy(x => x.period)
             .ToList<object>();
@@ -179,5 +198,23 @@ public sealed class ReportsController : ControllerBase
             .ToList();
 
         return Ok(data);
+    }
+
+    private static (string Name, string Color) BuildCategoryBucket(PersonalFinance.Domain.Entities.Transaction transaction, Guid currentUserId)
+    {
+        if (transaction.UserId != currentUserId)
+        {
+            return (BuildSharedUserSpendLabel(transaction.User?.DisplayName ?? transaction.User?.Email), SharedMemberSpendColor);
+        }
+
+        return (
+            transaction.Category?.Name ?? UncategorizedLabel,
+            transaction.Category?.Color ?? UncategorizedColor);
+    }
+
+    private static string BuildSharedUserSpendLabel(string? actorName)
+    {
+        var normalized = string.IsNullOrWhiteSpace(actorName) ? "member" : actorName.Trim();
+        return $"Shared user {normalized} spent";
     }
 }

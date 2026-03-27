@@ -10,3 +10,7 @@ This repository contains:
 Azure frontend URL:
 
 - `https://purple-field-0625e6600.1.azurestaticapps.net`
+
+Azure backend health check URL:
+
+- `https://track-my-money-api-c6bkh4ejathcagf0.centralindia-01.azurewebsites.net/health`

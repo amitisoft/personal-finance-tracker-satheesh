@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import axios from "axios";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Landmark, Plus } from "lucide-react";
@@ -176,31 +176,51 @@ export function AccountsPage() {
           </Button>
         </div>
 
-        <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {data?.accounts.map((account) => (
-            <Card key={account.id} className={`${softPanelClass} p-4 sm:p-5 ${selectedAccount?.id === account.id ? "ring-2 ring-brand-300" : ""}`}>
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-slate-500">{account.type}</p>
-                <span
-                  className={`rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
-                    account.accessRole === "owner"
-                      ? "bg-brand-100 text-brand-700"
-                      : account.accessRole === "editor"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-amber-100 text-amber-700"
-                  }`}
-                >
-                  {account.accessRole ?? "owner"}
-                </span>
+            <Card
+              key={account.id}
+              className={`${softPanelClass} min-h-[180px] p-0 ${selectedAccount?.id === account.id ? "ring-2 ring-brand-300" : ""}`}
+            >
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => setSelectedAccountId(account.id)}
+                onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedAccountId(account.id);
+                  }
+                }}
+                className="flex h-full cursor-pointer flex-col p-4 sm:min-h-[190px]"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-[11px] uppercase tracking-[0.14em] text-slate-500">{account.type}</p>
+                  <span
+                    className={`rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+                      account.accessRole === "owner"
+                        ? "bg-brand-100 text-brand-700"
+                        : account.accessRole === "editor"
+                          ? "bg-emerald-100 text-emerald-700"
+                          : "bg-amber-100 text-amber-700"
+                    }`}
+                  >
+                    {account.accessRole ?? "owner"}
+                  </span>
+                </div>
+                <h3 className="mt-2 text-xl font-semibold text-slate-900">{account.name}</h3>
+                <p className="mt-3 text-2xl font-semibold text-brand-700">{formatCurrency(account.balance)}</p>
+                {account.accessRole === "viewer" ? (
+                  <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-800">
+                    Read-only access. You can view this shared account but cannot modify its transactions.
+                  </p>
+                ) : (
+                  <div className="mt-3 text-xs text-slate-500">Shared account controls and activity are available here.</div>
+                )}
+                <div className="mt-auto pt-4 text-xs text-slate-400">
+                  Click card to view sharing details.
+                </div>
               </div>
-              <h3 className="mt-2 text-lg font-semibold text-slate-900 sm:text-xl">{account.name}</h3>
-              <p className="mt-4 text-2xl font-semibold text-brand-700 sm:text-3xl">{formatCurrency(account.balance)}</p>
-              {account.accessRole === "viewer" ? (
-                <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  Read-only access. You can view this shared account but cannot modify its transactions.
-                </p>
-              ) : null}
-              <Button variant="secondary" className="mt-4" onClick={() => setSelectedAccountId(account.id)}>Manage sharing</Button>
             </Card>
           ))}
         </div>

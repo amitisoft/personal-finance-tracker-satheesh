@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import axios from "axios";
 import { Plus, Search, Pencil, Trash2, Tag, UtensilsCrossed, CarFront, BusFront, Fuel, Home, ShoppingBag, CreditCard, Landmark, Wallet, PiggyBank, BadgeIndianRupee, CircleDollarSign, BriefcaseBusiness, TrendingUp, Plane, FerrisWheel, Film, Smartphone, HeartPulse, ShieldCheck, GraduationCap, type LucideIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
@@ -8,7 +9,10 @@ import { Modal } from "@/components/ui/modal";
 import { useFinanceData } from "@/features/common/hooks/use-finance-data";
 import { removeCategory, saveCategory } from "@/features/finance/api/finance-api";
 import { toastError, toastSuccess } from "@/components/feedback/toast";
+import { useAuthStore } from "@/store/auth-store";
 import type { Category, CategoryType } from "@/types/domain";
+
+type DisplayCategory = Category & { systemGenerated?: boolean; helperText?: string };
 
 const CATEGORY_ICONS: Array<{ name: string; icon: LucideIcon }> = [
   { name: "Tag", icon: Tag },
@@ -45,6 +49,11 @@ const emptyDraft = (type: CategoryType): Category => ({
   type,
   archived: false,
 });
+
+function getApiErrorMessage(error: unknown, fallback: string) {
+  const apiMessage = axios.isAxiosError(error) ? error.response?.data?.message : null;
+  return apiMessage || (error instanceof Error ? error.message : fallback);
+}
 
 function CategoryGlyph({ icon, size = 18 }: { icon: string; color: string; size?: number }) {
   const Icon = CATEGORY_ICON_MAP[icon] ?? Tag;
@@ -148,11 +157,11 @@ function CategoryModal({
 function CategorySection({ title, type, categories, onAdd, onEdit, onToggleArchive, onDelete }: {
   title: string;
   type: CategoryType;
-  categories: Category[];
+  categories: DisplayCategory[];
   onAdd: (type: CategoryType) => void;
-  onEdit: (category: Category) => void;
-  onToggleArchive: (category: Category) => void;
-  onDelete: (category: Category) => void;
+  onEdit: (category: DisplayCategory) => void;
+  onToggleArchive: (category: DisplayCategory) => void;
+  onDelete: (category: DisplayCategory) => void;
 }) {
   return (
     <Card className="border border-slate-100">
@@ -175,19 +184,27 @@ function CategorySection({ title, type, categories, onAdd, onEdit, onToggleArchi
               </span>
               <div>
                 <p className="font-medium text-slate-800">{category.name}</p>
-                <p className="text-xs text-slate-500">{category.icon}{category.archived ? " - Archived" : ""}</p>
+                <p className="text-xs text-slate-500">{category.systemGenerated ? category.helperText : `${category.icon}${category.archived ? " - Archived" : ""}`}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="secondary" className="gap-2" onClick={() => onEdit(category)}>
-                <Pencil size={14} />
-                Edit
-              </Button>
-              <Button variant="ghost" onClick={() => onToggleArchive(category)}>{category.archived ? "Unarchive" : "Archive"}</Button>
-              <Button variant="ghost" className="gap-2 text-rose-600 hover:bg-rose-50" onClick={() => onDelete(category)}>
-                <Trash2 size={14} />
-                Delete
-              </Button>
+              {category.systemGenerated ? (
+                <span className="rounded-full bg-violet-100 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-violet-700">
+                  Shared
+                </span>
+              ) : (
+                <>
+                  <Button variant="secondary" className="gap-2" onClick={() => onEdit(category)}>
+                    <Pencil size={14} />
+                    Edit
+                  </Button>
+                  <Button variant="ghost" onClick={() => onToggleArchive(category)}>{category.archived ? "Unarchive" : "Archive"}</Button>
+                  <Button variant="ghost" className="gap-2 text-rose-600 hover:bg-rose-50" onClick={() => onDelete(category)}>
+                    <Trash2 size={14} />
+                    Delete
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         ))}
@@ -198,6 +215,7 @@ function CategorySection({ title, type, categories, onAdd, onEdit, onToggleArchi
 
 export function CategoriesPage() {
   const { data } = useFinanceData();
+  const currentUserId = useAuthStore((state) => state.user?.id);
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<Category>(emptyDraft("expense"));
   const [open, setOpen] = useState(false);
@@ -214,7 +232,7 @@ export function CategoriesPage() {
       setDraft(emptyDraft(category.type));
       setOpen(false);
     },
-    onError: (error) => toastError(error instanceof Error ? error.message : "Unable to save category"),
+    onError: (error) => toastError(getApiErrorMessage(error, "Unable to save category")),
   });
 
   const deleteMutation = useMutation({
@@ -227,11 +245,63 @@ export function CategoriesPage() {
       ]);
       toastSuccess("Category deleted");
     },
-    onError: (error) => toastError(error instanceof Error ? error.message : "Unable to delete category"),
+    onError: (error) => toastError(getApiErrorMessage(error, "Unable to delete category")),
   });
 
-  const expenseCategories = useMemo(() => data?.categories.filter((category) => category.type === "expense") ?? [], [data]);
-  const incomeCategories = useMemo(() => data?.categories.filter((category) => category.type === "income") ?? [], [data]);
+  const expenseCategories = useMemo<DisplayCategory[]>(() => data?.categories.filter((category) => category.type === "expense") ?? [], [data]);
+  const incomeCategories = useMemo<DisplayCategory[]>(() => data?.categories.filter((category) => category.type === "income") ?? [], [data]);
+  const sharedExpenseCategories = useMemo<DisplayCategory[]>(() => {
+    if (!data || !currentUserId) {
+      return [];
+    }
+
+    const seen = new Map<string, DisplayCategory>();
+    for (const transaction of data.transactions) {
+      if (transaction.type !== "expense" || !transaction.createdByUserId || transaction.createdByUserId === currentUserId) {
+        continue;
+      }
+
+      const displayName = transaction.createdByName?.trim() || "member";
+      if (seen.has(transaction.createdByUserId)) {
+        continue;
+      }
+
+      seen.set(transaction.createdByUserId, {
+        id: `shared-user-${transaction.createdByUserId}`,
+        name: `Shared user ${displayName} spent`,
+        type: "expense",
+        color: "#7c3aed",
+        icon: "Tag",
+        archived: false,
+        systemGenerated: true,
+        helperText: "Generated automatically for shared-account spending.",
+      });
+    }
+
+    return Array.from(seen.values()).sort((left, right) => left.name.localeCompare(right.name));
+  }, [currentUserId, data]);
+  const uncategorizedExpenseCategory = useMemo<DisplayCategory[]>(() => {
+    if (!data) {
+      return [];
+    }
+
+    const hasNeedsReview = data.transactions.some((transaction) => transaction.type === "expense" && !transaction.categoryId && !transaction.categoryName);
+    if (!hasNeedsReview) {
+      return [];
+    }
+
+    return [{
+      id: "needs-review-expense",
+      name: "Needs review",
+      type: "expense",
+      color: "#64748b",
+      icon: "Tag",
+      archived: false,
+      systemGenerated: true,
+      helperText: "Generated automatically for expense entries without a category.",
+    }];
+  }, [data]);
+  const expenseCategoriesWithShared = useMemo(() => [...expenseCategories, ...sharedExpenseCategories, ...uncategorizedExpenseCategory], [expenseCategories, sharedExpenseCategories, uncategorizedExpenseCategory]);
 
   const handleSave = () => {
     const normalizedName = draft.name.trim();
@@ -249,10 +319,11 @@ export function CategoriesPage() {
         <p className="text-sm text-slate-500">Manage income and expense categories used across budgets, reports, and transactions.</p>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">
-        <CategorySection title="Expense categories" type="expense" categories={expenseCategories} onAdd={(type) => { setDraft(emptyDraft(type)); setOpen(true); }} onEdit={(category) => { setDraft(category); setOpen(true); }} onToggleArchive={(category) => saveMutation.mutate({ ...category, archived: !category.archived })} onDelete={(category) => window.confirm(`Delete category "${category.name}"?`) && deleteMutation.mutate(category.id)} />
+        <CategorySection title="Expense categories" type="expense" categories={expenseCategoriesWithShared} onAdd={(type) => { setDraft(emptyDraft(type)); setOpen(true); }} onEdit={(category) => { setDraft(category); setOpen(true); }} onToggleArchive={(category) => saveMutation.mutate({ ...category, archived: !category.archived })} onDelete={(category) => window.confirm(`Delete category "${category.name}"?`) && deleteMutation.mutate(category.id)} />
         <CategorySection title="Income categories" type="income" categories={incomeCategories} onAdd={(type) => { setDraft(emptyDraft(type)); setOpen(true); }} onEdit={(category) => { setDraft(category); setOpen(true); }} onToggleArchive={(category) => saveMutation.mutate({ ...category, archived: !category.archived })} onDelete={(category) => window.confirm(`Delete category "${category.name}"?`) && deleteMutation.mutate(category.id)} />
       </div>
       <CategoryModal open={open} title={draft.id ? `Edit ${draft.type} category` : `Add ${draft.type} category`} draft={draft} onClose={() => setOpen(false)} onChange={setDraft} onSubmit={handleSave} pending={saveMutation.isPending} />
     </div>
   );
 }
+

@@ -15,6 +15,10 @@ namespace PersonalFinance.Api.Controllers;
 [Route("api/dashboard")]
 public sealed class DashboardController : ControllerBase
 {
+    private const string SharedMemberSpendColor = "#7c3aed";
+    private const string UncategorizedLabel = "Needs review";
+    private const string UncategorizedColor = "#64748b";
+
     private readonly AppDbContext _db;
     private readonly ICurrentUserService _currentUser;
     private readonly AccountAccessService _accountAccess;
@@ -37,7 +41,11 @@ public sealed class DashboardController : ControllerBase
 
         var accounts = await _db.AccountsSet.Where(x => accessibleAccountIds.Contains(x.Id)).ToListAsync(cancellationToken);
         var categories = await _db.CategoriesSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
-        var transactions = await _db.TransactionsSet.Where(x => accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value))).ToListAsync(cancellationToken);
+        var transactions = await _db.TransactionsSet
+            .Include(x => x.Category)
+            .Include(x => x.User)
+            .Where(x => accessibleAccountIds.Contains(x.AccountId) || (x.DestinationAccountId.HasValue && accessibleAccountIds.Contains(x.DestinationAccountId.Value)))
+            .ToListAsync(cancellationToken);
         var budgets = await _db.BudgetsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         var goals = await _db.GoalsSet.Where(x => x.UserId == userId).ToListAsync(cancellationToken);
         var recurring = await _db.RecurringTransactionsSet.Where(x => accessibleAccountIds.Contains(x.AccountId)).ToListAsync(cancellationToken);
@@ -54,13 +62,34 @@ public sealed class DashboardController : ControllerBase
             return b.ToVm(spent);
         }).ToList();
 
-        var categorySpend = currentTransactions.Where(x => x.Type == TransactionType.Expense && x.CategoryId.HasValue)
-            .GroupBy(x => x.CategoryId!.Value)
-            .Select(group =>
+        var categorySpend = currentTransactions
+            .Where(x => x.Type == TransactionType.Expense)
+            .GroupBy(x =>
             {
-                var category = categories.FirstOrDefault(c => c.Id == group.Key);
-                return (object)new { name = category?.Name ?? "Uncategorized", value = group.Sum(x => x.Amount), color = category?.Color ?? "#2563eb" };
-            }).ToList();
+                if (x.UserId != userId)
+                {
+                    return new
+                    {
+                        Name = BuildSharedUserSpendLabel(x.User?.DisplayName ?? x.User?.Email),
+                        Color = SharedMemberSpendColor,
+                    };
+                }
+
+                return new
+                {
+                    Name = x.Category?.Name ?? UncategorizedLabel,
+                    Color = x.Category?.Color ?? UncategorizedColor,
+                };
+            })
+            .Select(group => new
+            {
+                name = group.Key.Name,
+                value = group.Sum(x => x.Amount),
+                color = group.Key.Color,
+            })
+            .OrderByDescending(x => x.value)
+            .Select(x => (object)x)
+            .ToList();
 
         var incomeExpenseTrend = Enumerable.Range(0, 3)
             .Select(offset => new DateOnly(now.Year, now.Month, 1).AddMonths(-2 + offset))
@@ -83,5 +112,11 @@ public sealed class DashboardController : ControllerBase
             goals.OrderBy(x => x.TargetDate).Select(x => x.ToVm()).ToList());
 
         return Ok(dto);
+    }
+
+    private static string BuildSharedUserSpendLabel(string? actorName)
+    {
+        var normalized = string.IsNullOrWhiteSpace(actorName) ? "member" : actorName.Trim();
+        return $"Shared user {normalized} spent";
     }
 }

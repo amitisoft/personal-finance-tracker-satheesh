@@ -48,12 +48,20 @@ function getTypeStyles(type: Transaction["type"]) {
   };
 }
 
-function getCategoryMeta(transaction: Transaction, categories: Category[]) {
+function getCategoryMeta(transaction: Transaction, categories: Category[], currentUserId?: string) {
   if (transaction.type === "transfer") {
     return {
       label: "Transfer",
       color: "#cbd5e1",
       tone: "text-slate-500",
+    };
+  }
+
+  if (transaction.type === "expense" && transaction.createdByUserId && currentUserId && transaction.createdByUserId !== currentUserId) {
+    return {
+      label: `Shared user ${transaction.createdByName?.trim() || "member"} spent`,
+      color: "#7c3aed",
+      tone: "text-violet-700",
     };
   }
 
@@ -68,9 +76,9 @@ function getCategoryMeta(transaction: Transaction, categories: Category[]) {
   const category = categories.find((entry) => entry.id === transaction.categoryId);
   if (!category) {
     return {
-      label: "Unassigned",
-      color: "#cbd5e1",
-      tone: "text-slate-500",
+      label: "Needs review",
+      color: "#64748b",
+      tone: "text-slate-600",
     };
   }
 
@@ -191,8 +199,8 @@ function TransactionsPage() {
       const rightAccount = data.accounts.find((entry) => entry.id === right.accountId)?.name ?? right.accountId;
       const leftDestination = left.destinationAccountId ? data.accounts.find((entry) => entry.id === left.destinationAccountId)?.name ?? null : null;
       const rightDestination = right.destinationAccountId ? data.accounts.find((entry) => entry.id === right.destinationAccountId)?.name ?? null : null;
-      const leftCategory = getCategoryMeta(left, data.categories).label;
-      const rightCategory = getCategoryMeta(right, data.categories).label;
+      const leftCategory = getCategoryMeta(left, data.categories, currentUserId).label;
+      const rightCategory = getCategoryMeta(right, data.categories, currentUserId).label;
       const leftType = getTypeStyles(left.type).label;
       const rightType = getTypeStyles(right.type).label;
 
@@ -286,7 +294,7 @@ function TransactionsPage() {
       return [
         item.date,
         item.merchant ?? "",
-        getCategoryMeta(item, data.categories).label,
+        getCategoryMeta(item, data.categories, currentUserId).label,
         getAccountLabel(item, account, destination),
         getTypeStyles(item.type).label,
         item.amount,
@@ -446,7 +454,7 @@ function TransactionsPage() {
                   {paginatedRows.map((item, index) => {
                     const account = data.accounts.find((entry) => entry.id === item.accountId)?.name ?? item.accountId;
                     const destination = item.destinationAccountId ? data.accounts.find((entry) => entry.id === item.destinationAccountId)?.name ?? null : null;
-                    const category = getCategoryMeta(item, data.categories);
+                    const category = getCategoryMeta(item, data.categories, currentUserId);
                     const styles = getTypeStyles(item.type);
                     const Icon = styles.icon;
                     const initials = (item.merchant ?? item.note ?? "NA").slice(0, 2).toUpperCase();
@@ -616,3 +624,4 @@ function TransactionsPage() {
 
 export { TransactionsPage };
 export default TransactionsPage;
+

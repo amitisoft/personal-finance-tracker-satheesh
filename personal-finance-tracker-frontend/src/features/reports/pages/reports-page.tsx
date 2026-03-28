@@ -30,8 +30,9 @@ export function ReportsPage() {
 
   const categoryTrendData = useMemo(() => advanced?.categoryTrends.slice(-8) ?? [], [advanced]);
   const categorySpendChartData = useMemo(() => (data?.categorySpend ?? []).slice().sort((left, right) => right.value - left.value), [data]);
-  const currencyTooltipFormatter = (value: number) => formatCurrency(value);
-  const currencyAxisFormatter = (value: number) => formatCurrency(value).replace("?", "").trim();
+  const formatMoney = (value: number | string) => formatCurrency(Number(value) || 0);
+  const currencyTooltipFormatter = (value: number | string) => formatMoney(value);
+  const currencyAxisFormatter = (value: number | string) => formatMoney(value).replace("₹", "").trim();
 
   const exportCsv = () => {
     if (!data) {
@@ -86,7 +87,7 @@ export function ReportsPage() {
                   <Tooltip formatter={currencyTooltipFormatter} />
                   <Bar dataKey="value" radius={[0, 10, 10, 0]} barSize={26}>
                     {categorySpendChartData.map((entry, index) => <Cell key={`${entry.name}-${index}`} fill={entry.color} />)}
-                    <LabelList dataKey="value" position="right" formatter={(value: number) => formatCurrency(value)} className="fill-slate-700 text-xs font-medium" />
+                    <LabelList dataKey="value" position="right" formatter={(value: number | string) => formatMoney(value)} className="fill-slate-700 text-xs font-medium" />
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

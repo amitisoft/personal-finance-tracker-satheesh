@@ -270,7 +270,7 @@ export function CategoriesPage() {
         id: `shared-user-${transaction.createdByUserId}`,
         name: `Shared user ${displayName} spent`,
         type: "expense",
-        color: "#7c3aed",
+        color: "#ef4444",
         icon: "Tag",
         archived: false,
         systemGenerated: true,
@@ -326,4 +326,5 @@ export function CategoriesPage() {
     </div>
   );
 }
+
 

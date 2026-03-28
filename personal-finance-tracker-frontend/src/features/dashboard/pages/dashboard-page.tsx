@@ -27,6 +27,9 @@ export function DashboardPage() {
   const { data: forecastDaily } = useQuery({ queryKey: ["forecast-daily"], queryFn: getForecastDaily });
   const { data: healthScore } = useQuery({ queryKey: ["health-score"], queryFn: getHealthScore });
   const financeState = useFinanceData();
+  const formatMoney = (value: number | string) => formatCurrency(Number(value) || 0);
+  const currencyAxisFormatter = (value: number | string) => formatMoney(value).replace(/[^\\d,.-]/g, '').trim();
+  const currencyTooltipFormatter = (value: number | string, name: string) => [formatMoney(value), name] as [string, string];
   const riskTone =
     forecastMonth?.riskLevel === "high"
       ? "bg-rose-100 text-rose-700"
@@ -203,8 +206,8 @@ export function DashboardPage() {
                 <LineChart data={forecastDaily?.points}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
                   <XAxis dataKey="date" stroke="#5b678a" />
-                  <YAxis stroke="#5b678a" />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <YAxis stroke="#5b678a" tickFormatter={currencyAxisFormatter} />
+                  <Tooltip formatter={currencyTooltipFormatter} />
                   <Line type="monotone" dataKey="projectedBalance" stroke="#335cff" strokeWidth={3} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
@@ -223,7 +226,7 @@ export function DashboardPage() {
                           <Cell key={entry.name} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                      <Tooltip formatter={currencyTooltipFormatter} />
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
@@ -268,8 +271,8 @@ export function DashboardPage() {
               <LineChart data={data.incomeExpenseTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
                 <XAxis dataKey="month" stroke="#5b678a" />
-                <YAxis stroke="#5b678a" />
-                <Tooltip />
+                <YAxis stroke="#5b678a" tickFormatter={currencyAxisFormatter} />
+                <Tooltip formatter={currencyTooltipFormatter} />
                 <Line type="monotone" dataKey="income" stroke="#335cff" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
                 <Line type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} dot={{ r: 3 }} activeDot={{ r: 5 }} />
               </LineChart>
@@ -382,3 +385,12 @@ export function DashboardPage() {
     </div>
   );
 }
+
+
+
+
+
+
+
+
+

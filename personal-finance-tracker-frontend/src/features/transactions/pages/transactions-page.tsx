@@ -60,7 +60,7 @@ function getCategoryMeta(transaction: Transaction, categories: Category[], curre
   if (transaction.type === "expense" && transaction.createdByUserId && currentUserId && transaction.createdByUserId !== currentUserId) {
     return {
       label: `Shared user ${transaction.createdByName?.trim() || "member"} spent`,
-      color: "#7c3aed",
+      color: "#ef4444",
       tone: "text-violet-700",
     };
   }
@@ -624,4 +624,5 @@ function TransactionsPage() {
 
 export { TransactionsPage };
 export default TransactionsPage;
+
 

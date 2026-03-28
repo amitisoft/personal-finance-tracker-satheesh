@@ -15,7 +15,7 @@ namespace PersonalFinance.Api.Controllers;
 [Route("api/dashboard")]
 public sealed class DashboardController : ControllerBase
 {
-    private const string SharedMemberSpendColor = "#7c3aed";
+    private const string SharedMemberSpendColor = "#ef4444";
     private const string UncategorizedLabel = "Needs review";
     private const string UncategorizedColor = "#64748b";
 
@@ -120,3 +120,4 @@ public sealed class DashboardController : ControllerBase
         return $"Shared user {normalized} spent";
     }
 }
+

@@ -3,6 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import { Card } from "@/components/ui/card";
 import { EmptyState, SkeletonCard } from "@/components/feedback/states";
 import { getInsights } from "@/features/finance/api/finance-api";
+import { formatCurrency } from "@/utils/format";
 
 const pageShellClass =
   "relative overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_top_left,rgba(194,214,255,0.42),transparent_32%),radial-gradient(circle_at_top_right,rgba(255,236,211,0.34),transparent_26%),linear-gradient(180deg,#f9fbff_0%,#eef4ff_54%,#f8fbff_100%)] px-4 py-5 sm:px-6";
@@ -11,6 +12,9 @@ const softPanelClass =
 
 export function InsightsPage() {
   const { data, isLoading } = useQuery({ queryKey: ["insights"], queryFn: getInsights });
+  const formatMoney = (value: number | string) => formatCurrency(Number(value) || 0);
+  const currencyAxisFormatter = (value: number | string) => formatMoney(value).replace(/[^\\d,.-]/g, '').trim();
+  const currencyTooltipFormatter = (value: number | string, name: string) => [formatMoney(value), name] as [string, string];
 
   if (isLoading) {
     return <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">{Array.from({ length: 4 }, (_, index) => <SkeletonCard key={index} />)}</div>;
@@ -100,8 +104,8 @@ export function InsightsPage() {
                 <LineChart data={data.incomeVsExpenseTrend}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#d9e3f6" />
                   <XAxis dataKey="period" stroke="#5b678a" />
-                  <YAxis stroke="#5b678a" />
-                  <Tooltip />
+                  <YAxis stroke="#5b678a" tickFormatter={currencyAxisFormatter} />
+                  <Tooltip formatter={currencyTooltipFormatter} />
                   <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={3} dot={{ r: 3 }} />
                   <Line type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={3} dot={{ r: 3 }} />
                 </LineChart>
@@ -113,3 +117,6 @@ export function InsightsPage() {
     </div>
   );
 }
+
+
+
